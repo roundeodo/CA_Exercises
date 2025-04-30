@@ -3,7 +3,6 @@
 
 module control_unit(
       input  wire [6:0] opcode,
-      input  wire       branch_taken,
       output reg  [1:0] alu_op,
       output reg        reg_dst,
       output reg        branch,
@@ -12,8 +11,7 @@ module control_unit(
       output reg        mem_write,
       output reg        alu_src,
       output reg        reg_write,
-      output reg        jump,
-      output reg        flush
+      output reg        jump
    );
 
    // RISC-V opcode[6:0] (see RISC-V greensheet)
@@ -43,7 +41,6 @@ module control_unit(
             branch    = 1'b0;
             alu_op    = R_TYPE_OPCODE;
             jump      = 1'b0;
-            flush     = 1'b0;
          end
          
          // Declare the control signals for each one of the instructions here...
@@ -56,7 +53,6 @@ module control_unit(
             branch    = 1'b0;
             alu_op    = ADD_OPCODE;
             jump      = 1'b0;
-            flush     = 1'b0;
          end
 
 
@@ -69,7 +65,6 @@ module control_unit(
             branch    = 1'b1;
             alu_op    = SUB_OPCODE;
             jump      = 1'b0;
-            flush     = branch_taken;
          end
 
          JUMP:begin
@@ -81,7 +76,6 @@ module control_unit(
             branch    = 1'b0;
             alu_op    = 2'bxx;
             jump      = 1'b1;
-            flush     = 1'b1;
          end
 
          LOAD:begin
@@ -93,7 +87,6 @@ module control_unit(
             branch    = 1'b0;
             alu_op    = ADD_OPCODE;
             jump      = 1'b0;
-            flush     = 1'b0;
          end
 
          STORE:begin
@@ -105,7 +98,6 @@ module control_unit(
             branch    = 1'b0;
             alu_op    = ADD_OPCODE;
             jump      = 1'b0;
-            flush     = 1'b0;
          end
 
 
@@ -118,7 +110,6 @@ module control_unit(
             branch    = 1'b0;
             alu_op    = R_TYPE_OPCODE;
             jump      = 1'b0;
-            flush     = 1'b0;
          end
       endcase
    end

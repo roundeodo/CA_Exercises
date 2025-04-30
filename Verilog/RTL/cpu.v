@@ -42,23 +42,17 @@ wire              zero_flag;
 wire [      63:0] branch_pc,updated_pc,current_pc,jump_pc;
 wire [      31:0] instruction;
 
-
-
 //IF_ID_reg
 wire [      31:0] instruction_IF_ID;
 wire [      63:0] current_pc_IF_ID;
 wire [      95:0] IF_ID_reg_D;
 wire [      95:0] IF_ID_reg_Q;
-
+reg               IF_ID_reg_enable;
 
 assign IF_ID_reg_D = {current_pc,instruction};
 
 assign current_pc_IF_ID  = IF_ID_reg_Q [95:32];
 assign instruction_IF_ID = IF_ID_reg_Q [31:0];
-
-
-
-
 
 
 // middle variable
@@ -73,78 +67,68 @@ wire [      63:0] regfile_wdata,mem_data,alu_out,
 wire signed [63:0] immediate_extended;
 
 
-wire mux_select_ID_EX_source;
-wire PC_write_enable;
-wire IF_ID_write_enable;
-wire IF_ID_flush;
-wire branch_taken;
-
-
-wire [7:0] ID_EX_source_mux_in_a;
-wire [7:0] ID_EX_source_mux_in_b;
-wire [7:0] ID_EX_source_mux_out;
-assign ID_EX_source_mux_in_a = {alu_op, reg_dst, mem_read, mem_2_reg, mem_write, alu_src, reg_write};
-assign ID_EX_source_mux_in_b = 8'b0;
-
-wire [ 1:0] mux_select_forward_a;
-wire [ 1:0] mux_select_forward_b;
-wire [63:0] mux_3_alu_operand_1;
-wire [63:0] mux_3_alu_operand_2;
-
-
-
 //ID_EX_reg
 wire [       1:0] alu_op_ID_EX;
-wire              reg_dst_ID_EX, mem_read_ID_EX, mem_2_reg_ID_EX,
-                   mem_write_ID_EX, alu_src_ID_EX, reg_write_ID_EX;
+wire              reg_dst_ID_EX,branch_ID_EX,mem_read_ID_EX,mem_2_reg_ID_EX,
+                  mem_write_ID_EX,alu_src_ID_EX, reg_write_ID_EX, jump_ID_EX;      
+wire [      63:0] current_pc_ID_EX;
 wire [      63:0] regfile_rdata_1_ID_EX,regfile_rdata_2_ID_EX;
 wire [      63:0] immediate_extended_ID_EX;
 wire [      31:0] instruction_ID_EX;
-wire [     231:0] ID_EX_reg_D;
-wire [     231:0] ID_EX_reg_Q;
+wire [     297:0] ID_EX_reg_D;
+wire [     297:0] ID_EX_reg_Q;
 reg               ID_EX_reg_enable;
 
-assign ID_EX_reg_D = {ID_EX_source_mux_out, regfile_rdata_1, regfile_rdata_2, immediate_extended, instruction_IF_ID};
+assign ID_EX_reg_D = {alu_op, reg_dst, branch, mem_read, mem_2_reg, mem_write, alu_src, reg_write, jump, current_pc_IF_ID, regfile_rdata_1, regfile_rdata_2, immediate_extended, instruction_IF_ID};
 
-assign alu_op_ID_EX             = ID_EX_reg_Q[231:230];
-assign reg_dst_ID_EX            = ID_EX_reg_Q[229];
-assign mem_read_ID_EX           = ID_EX_reg_Q[228];
-assign mem_2_reg_ID_EX          = ID_EX_reg_Q[227];
-assign mem_write_ID_EX          = ID_EX_reg_Q[226];
-assign alu_src_ID_EX            = ID_EX_reg_Q[225];
-assign reg_write_ID_EX          = ID_EX_reg_Q[224];
+assign alu_op_ID_EX             = ID_EX_reg_Q[297:296];
+assign reg_dst_ID_EX            = ID_EX_reg_Q[295];
+assign branch_ID_EX             = ID_EX_reg_Q[294];
+assign mem_read_ID_EX           = ID_EX_reg_Q[293];
+assign mem_2_reg_ID_EX          = ID_EX_reg_Q[292];
+assign mem_write_ID_EX          = ID_EX_reg_Q[291];
+assign alu_src_ID_EX            = ID_EX_reg_Q[290];
+assign reg_write_ID_EX          = ID_EX_reg_Q[289];
+assign jump_ID_EX               = ID_EX_reg_Q[288];
+assign current_pc_ID_EX         = ID_EX_reg_Q[287:224];
 assign regfile_rdata_1_ID_EX    = ID_EX_reg_Q[223:160];
 assign regfile_rdata_2_ID_EX    = ID_EX_reg_Q[159:96];
 assign immediate_extended_ID_EX = ID_EX_reg_Q[95:32];
 assign instruction_ID_EX        = ID_EX_reg_Q[31:0];
 
 
-
-
-
-
+//forwarding_unit and mux_3
+wire [ 1:0] mux_select_forward_a;
+wire [ 1:0] mux_select_forward_b;
+wire [63:0] mux_3_alu_operand_1;
+wire [63:0] mux_3_alu_operand_2;
 
 //EX_MEM_reg
-wire mem_read_EX_MEM, mem_2_reg_EX_MEM, mem_write_EX_MEM,reg_write_EX_MEM;
+wire jump_EX_MEM, branch_EX_MEM, mem_read_EX_MEM, mem_2_reg_EX_MEM, mem_write_EX_MEM,reg_write_EX_MEM;
+wire [      63:0] branch_pc_EX_MEM;
+wire [      63:0] jump_pc_EX_MEM;
+wire              zero_flag_EX_MEM;
 wire [      63:0] alu_out_EX_MEM;
-wire [      63:0] alu_operand_2_EX_MEM;
+wire [      63:0] mux_3_alu_operand_2_EX_MEM;
 wire [      31:0] instruction_EX_MEM;
-wire [     163:0] EX_MEM_reg_D;
-wire [     163:0] EX_MEM_reg_Q;
+wire [     294:0] EX_MEM_reg_D;
+wire [     294:0] EX_MEM_reg_Q;
 reg               EX_MEM_reg_enable;
 
-assign EX_MEM_reg_D = {mem_read_ID_EX, mem_2_reg_ID_EX, mem_write_ID_EX, reg_write_ID_EX, alu_out, mux_3_alu_operand_2, instruction_ID_EX};
+assign EX_MEM_reg_D = {jump_ID_EX, branch_ID_EX, mem_read_ID_EX, mem_2_reg_ID_EX, mem_write_ID_EX, reg_write_ID_EX, branch_pc, jump_pc, zero_flag, alu_out, mux_3_alu_operand_2, instruction_ID_EX};
 
-assign mem_read_EX_MEM        = EX_MEM_reg_Q[163];
-assign mem_2_reg_EX_MEM       = EX_MEM_reg_Q[162];
-assign mem_write_EX_MEM       = EX_MEM_reg_Q[161];
-assign reg_write_EX_MEM       = EX_MEM_reg_Q[160];
-assign alu_out_EX_MEM         = EX_MEM_reg_Q[159:96];
-assign alu_operand_2_EX_MEM   = EX_MEM_reg_Q[95:32];
-assign instruction_EX_MEM     = EX_MEM_reg_Q[31:0];
-
-
-
+assign jump_EX_MEM                = EX_MEM_reg_Q[294];
+assign branch_EX_MEM              = EX_MEM_reg_Q[293];
+assign mem_read_EX_MEM            = EX_MEM_reg_Q[292];
+assign mem_2_reg_EX_MEM           = EX_MEM_reg_Q[291];
+assign mem_write_EX_MEM           = EX_MEM_reg_Q[290];
+assign reg_write_EX_MEM           = EX_MEM_reg_Q[289];
+assign branch_pc_EX_MEM           = EX_MEM_reg_Q[288:225];
+assign jump_pc_EX_MEM             = EX_MEM_reg_Q[224:161];
+assign zero_flag_EX_MEM           = EX_MEM_reg_Q[160];
+assign alu_out_EX_MEM             = EX_MEM_reg_Q[159:96];
+assign mux_3_alu_operand_2_EX_MEM = EX_MEM_reg_Q[95:32];
+assign instruction_EX_MEM         = EX_MEM_reg_Q[31:0];
 
 
 
@@ -167,24 +151,18 @@ assign instruction_MEM_WB   = MEM_WB_reg_Q[31:0];
 
 
 
-
-
-
-
-
-
 pc #(
    .DATA_W(64)
 ) program_counter (
    .clk       (clk       ),
    .arst_n    (arst_n    ),
-   .branch_pc (branch_pc ),
-   .jump_pc   (jump_pc   ),
-   .zero_flag (branch_taken),
-   .branch    (branch    ),
-   .jump      (jump      ),
+   .branch_pc (branch_pc_EX_MEM ),
+   .jump_pc   (jump_pc_EX_MEM   ),
+   .zero_flag (zero_flag_EX_MEM ),
+   .branch    (branch_EX_MEM    ),
+   .jump      (jump_EX_MEM      ),
    .current_pc(current_pc),
-   .enable    (PC_write_enable),
+   .enable    (enable    ),
    .updated_pc(updated_pc)
 );
 
@@ -208,33 +186,20 @@ sram_BW32 #(
 
 
 
-reg_arstn_en_extended#(
+reg_arstn_en#(
    .DATA_W(96)
 )signal_pipe_IF_ID(
    .clk    (clk),
    .arst_n (arst_n),
-   .en     (IF_ID_write_enable),
-   .flush  (IF_ID_flush),
+   .en     (IF_ID_reg_enable),
    .din    (IF_ID_reg_D),
    .dout   (IF_ID_reg_Q)
-);
-
-
-hazard_detection_unit hazard_detector(
-   .mem_read_ID_EX(mem_read_ID_EX),
-   .rd_ID_EX(instruction_ID_EX[11:7]),
-   .rs1_IF_ID(instruction_IF_ID[19:15]),
-   .rs2_IF_ID(instruction_IF_ID[24:20]),
-   .PC_write_enable(PC_write_enable),
-   .IF_ID_write_enable(IF_ID_write_enable),
-   .mux_control_EX(mux_select_ID_EX_source)
 );
 
 
 
 control_unit control_unit(
    .opcode   (instruction_IF_ID[6:0]),
-   .branch_taken(branch_taken),
    .alu_op   (alu_op          ),
    .reg_dst  (reg_dst         ),
    .branch   (branch          ),
@@ -243,18 +208,10 @@ control_unit control_unit(
    .mem_write(mem_write       ),
    .alu_src  (alu_src         ),
    .reg_write(reg_write       ),
-   .jump     (jump            ),
-   .flush    (IF_ID_flush)
+   .jump     (jump            )
 );
 
-branch_unit#(
-   .DATA_W(64)
-)branch_unit(
-   .current_pc         (current_pc_IF_ID        ),
-   .immediate_extended (immediate_extended      ),
-   .branch_pc          (branch_pc               ),
-   .jump_pc            (jump_pc                 )
-);
+
 
 
 register_file #(
@@ -271,7 +228,7 @@ register_file #(
    .rdata_2  (regfile_rdata_2   )
 );
 
-assign branch_taken = (regfile_rdata_1 == regfile_rdata_2)? 1'b1 : 1'b0;
+
 
 
 immediate_extend_unit immediate_extend_u(
@@ -280,19 +237,8 @@ immediate_extend_unit immediate_extend_u(
 );
 
 
-mux_2#(
-   .DATA_W(8)
-)ID_EX_source_mux(
-   .input_a(ID_EX_source_mux_in_a),
-   .input_b(ID_EX_source_mux_in_b),
-   .select_a(mux_select_ID_EX_source),
-   .mux_out(ID_EX_source_mux_out)
-);
-
-
-
 reg_arstn_en#(
-   .DATA_W(232)
+   .DATA_W(298)
 )signal_pipe_ID_EX(
    .clk    (clk),
    .arst_n (arst_n),
@@ -301,6 +247,40 @@ reg_arstn_en#(
    .dout   (ID_EX_reg_Q)
 );
 
+
+
+
+
+branch_unit#(
+   .DATA_W(64)
+)branch_unit(
+   .current_pc         (current_pc_ID_EX        ),
+   .immediate_extended (immediate_extended_ID_EX),
+   .branch_pc          (branch_pc               ),
+   .jump_pc            (jump_pc                 )
+);
+
+
+mux_2 #(
+   .DATA_W(64)
+) alu_operand_mux (
+   .input_a (immediate_extended_ID_EX),
+   .input_b (mux_3_alu_operand_2   ),
+   .select_a(alu_src_ID_EX           ),
+   .mux_out (alu_operand_2     )
+);
+
+
+alu#(
+   .DATA_W(64)
+) alu(
+   .alu_in_0 (mux_3_alu_operand_1 ),
+   .alu_in_1 (alu_operand_2   ),
+   .alu_ctrl (alu_control     ),
+   .alu_out  (alu_out         ),
+   .zero_flag(zero_flag       ),
+   .overflow (                )
+);
 
 
 
@@ -324,31 +304,6 @@ mux_3#(
    .mux_out  (mux_3_alu_operand_2)
 );
 
-
-mux_2 #(
-   .DATA_W(64)
-) alu_operand_mux (
-   .input_a (immediate_extended_ID_EX),
-   .input_b (mux_3_alu_operand_2   ),
-   .select_a(alu_src_ID_EX           ),
-   .mux_out (alu_operand_2     )
-);
-
-
-alu#(
-   .DATA_W(64)
-) alu(
-   .alu_in_0 (mux_3_alu_operand_1 ),
-   .alu_in_1 (alu_operand_2   ),
-   .alu_ctrl (alu_control     ),
-   .alu_out  (alu_out         ),
-   .zero_flag(                ),
-   .overflow (                )
-);
-
-
-
-
 forwarding_unit forwarding_unit(
    .rs1_ID_EX(instruction_ID_EX[19:15]),
    .rs2_ID_EX(instruction_ID_EX[24:20]),
@@ -361,15 +316,15 @@ forwarding_unit forwarding_unit(
 );
 
 alu_control alu_ctrl(
-   .func7          (instruction_ID_EX[31:25]),
+   .func7       (instruction_ID_EX[31:25]   ),
    .func3          (instruction_ID_EX[14:12]),
    .alu_op         (alu_op_ID_EX            ),
-   .alu_control    (alu_control             )
+   .alu_control    (alu_control       )
 );
 
 
 reg_arstn_en#(
-   .DATA_W(164)
+   .DATA_W(295)
 )signal_pipe_EX_MEM(
    .clk    (clk),
    .arst_n (arst_n),
@@ -389,7 +344,7 @@ sram_BW64 #(
    .addr     (alu_out_EX_MEM        ),
    .wen      (mem_write_EX_MEM      ),
    .ren      (mem_read_EX_MEM       ),
-   .wdata    (alu_operand_2_EX_MEM),
+   .wdata    (mux_3_alu_operand_2_EX_MEM),
    .rdata    (mem_data       ),
    .addr_ext (addr_ext_2     ),
    .wen_ext  (wen_ext_2      ),
@@ -426,11 +381,13 @@ mux_2 #(
 
 always@(posedge clk or negedge arst_n)begin
    if(!arst_n)begin
+      IF_ID_reg_enable  <= 0;
       ID_EX_reg_enable  <= 0;
       EX_MEM_reg_enable <= 0;
       MEM_WB_reg_enable <= 0;
    end
    else begin
+      IF_ID_reg_enable  <= 1;
       ID_EX_reg_enable  <= 1;
       EX_MEM_reg_enable <= 1;
       MEM_WB_reg_enable <= 1;

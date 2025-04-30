@@ -16,7 +16,6 @@ module branch_unit#(
       output reg  signed [DATA_W-1:0]  jump_pc
    );
 
-
    always@(*) branch_pc           = current_pc + immediate_extended;
    always@(*) jump_pc             = current_pc + immediate_extended;
   
